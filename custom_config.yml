@@ -24,4 +24,3 @@ file_writer_config:
 fps: 30
 window_position: UR
 window_monitor: 0
-full_screen: False
