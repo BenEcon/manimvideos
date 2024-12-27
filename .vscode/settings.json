@@ -41,5 +41,6 @@
         "*.py": "manimvideos $fullFileName",
         "pom.xml": "cd $dir && mvn clean package"
     },
-    "code-runner.saveAllFilesBeforeRun": true
+    "code-runner.saveAllFilesBeforeRun": true,
+    "python.terminal.activateEnvInCurrentTerminal": true
 }
