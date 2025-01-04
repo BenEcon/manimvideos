@@ -1,3 +1,4 @@
+#~ 2024-10-06
 #~ 2025-01-01
 
 from __future__ import annotations
@@ -2213,6 +2214,10 @@ class ShowSurfaceReflection(ShowTheSurface):
 class ConstructKleinBottle(InteractiveScene):
     def construct(self):
         # Add arrow diagram
+        if not globals().get("DEG"):
+            DEG = DEGREES
+        self.embed()
+
         square = Square()
         square.set_fill(GREY_E, 1).set_stroke(BLACK, width=0)
         square.set_height(4)
@@ -2393,6 +2398,12 @@ class ConstructKleinBottle(InteractiveScene):
         self.wait()
         self.play(Transform(moving_surface, half_klein), run_time=4)
 
+        self.clear()
+        klein_func = self.get_kelin_bottle_func(v_upper_bound = .7, partial = .5)
+        near_smooth = bezier([0, 0.1, 0.9, 1])
+        surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, near_smooth(v))), "KleinBottleTexture")
+        self.add(surface)
+
         # Transition to full Klein Bottle
         klein_diagram = VGroup(pre_square, pink_arrows, yellow_arrows)
         v_upper_bound = 0.85
@@ -2424,37 +2435,90 @@ class ConstructKleinBottle(InteractiveScene):
 
         return VGroup(line, tips)
 
-    def get_kelin_bottle_func(self, width=4, z=4):
-        # Test kelin func
-        ref_svg = SVGMobject("KleinReference")[0]
-        ref_svg.make_smooth(approx=False)
-        ref_svg.add_line_to(ref_svg.get_start())
-        ref_svg.set_stroke(WHITE, 3)
-        ref_svg.set_width(width)
-        ref_svg.rotate(PI)
-        ref_svg.set_z(4)
-        ref_svg.insert_n_curves(100)
+    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85, partial = 1):
+        if mode == "svg":
+            # Test kelin func
+            ref_svg = SVGMobject("KleinReference")[0]
+            ref_svg.make_smooth(approx=False)
+            ref_svg.add_line_to(ref_svg.get_start())
+            ref_svg.set_stroke(WHITE, 3)
+            ref_svg.set_width(width)
+            ref_svg.rotate(PI)
+            ref_svg.set_z(4)
+            ref_svg.insert_n_curves(100)
 
-        # curve_func = get_quick_loop_func(ref_svg)
-        curve_func = ref_svg.quick_point_from_proportion
-        radius_func = bezier([1, 1, 0.5, 0.3, 0.3, 0.3, 1.0])
-        tan_alpha_func = bezier([1, 1, 0, 0, 0, 0, 1, 1])
-        v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
+            # curve_func = get_quick_loop_func(ref_svg)
+            curve_func = ref_svg.quick_point_from_proportion
+        elif mode == "gemini":
+            def klein_bottle(u, v):
+                u *= TAU
+                v *= TAU
+                """
+                Parametric equation for the Klein bottle.
 
-        def pre_klein_func(u, v):
-            dv = 1e-2
-            c_point = curve_func(v)
-            c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
-            tangent_alpha = tan_alpha_func(v)
-            # tangent = interpolate(c_prime, UP if v < 0.5 else DOWN, tangent_alpha)
-            tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
+                Args:
+                    u: First parameter.
+                    v: Second parameter.
 
-            perp = normalize(cross(tangent, OUT))
-            radius = radius_func(v)
+                Returns:
+                    A tuple containing x, y, and z coordinates.
+                """
+                a = 6 * np.cos(u) * (1 + np.sin(u))
+                b = 16 * np.sin(u)
+                c = 5 * (1 - np.cos(u) / 2)
 
-            return c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
+                # Handle the twist in the bottle's construction
+                x = a + c * np.cos(v) * np.cos(u) 
+                y = b + c * np.sin(v) * np.cos(u) 
+                z = c * np.sin(v)
+                x = (a + c * np.cos(v + np.pi)) * (u > np.pi) + x*(u <= np.pi)
+                y = (b) * (u > np.pi) + y*(u <= np.pi)
+                return np.array([x, y, z])
+            curve_func = klein_bottle
+            return curve_func
+        elif mode == "wikipedia":
+            def klein_function(u, v, a=2, b=1, c=3):
+                
+                u *= TAU
+                v *= TAU
+                x = (
+                    -a / c * np.cos(u) * (
+                        3 * np.cos(v) - 30 * np.sin(u) + 90 * np.cos(u)**4 * np.sin(u) -
+                        60 * np.cos(u)**6 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u)
+                    )
+                )
+                y = (
+                    -b / c * np.sin(u) * (
+                        3 * np.cos(v) - 3 * np.cos(u)**2 * np.cos(v) - 48 * np.cos(u)**4 * np.cos(v) +
+                        48 * np.cos(u)**6 * np.cos(v) - 60 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u) -
+                        5 * np.cos(u)**3 * np.cos(v) * np.sin(u) - 80 * np.cos(u)**5 * np.cos(v) * np.sin(u) +
+                        80 * np.cos(u)**7 * np.cos(v) * np.sin(u)
+                    )
+                )
+                z = a / c * (3 + 5 * np.cos(u) * np.sin(u)) * np.sin(v)
+                return np.array([x, y, z])
+            curve_func = klein_function
+            return curve_func
 
-        v_upper_bound = 0.85
+        def pre_klein_func(u, v, mode = mode):
+            if mode == "svg":
+                radius_func = bezier([1, 1, 0.5, 0.3, 0.3, 0.3, 1.0])
+                tan_alpha_func = bezier([1, 1, 0, 0, 0, 0, 1, 1])
+                v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
+                dv = 1e-2
+                c_point = curve_func(v)
+                c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
+                tangent_alpha = tan_alpha_func(v)
+                # tangent = interpolate(c_prime, UP if v < 0.5 else DOWN, tangent_alpha)
+                tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
+
+                perp = normalize(cross(tangent, OUT))
+                radius = radius_func(v)
+                # surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
+                surface_point = c_point + radius * (math.sin(TAU * u) * OUT + math.cos(TAU * u) * perp)
+                return surface_point
+            else:
+                return curve_func(u, v)
 
         def true_kelin_func(u, v):
             if v <= v_upper_bound:
