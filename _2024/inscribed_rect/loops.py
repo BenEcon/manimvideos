@@ -2,6 +2,7 @@
 #~ 2025-01-01
 
 from __future__ import annotations
+from subprocess import PIPE
 
 from manim_imports_ext import *
 
@@ -2212,6 +2213,7 @@ class ShowSurfaceReflection(ShowTheSurface):
 
 
 class ConstructKleinBottle(InteractiveScene):
+    klein_mode = "wikipedia"
     def construct(self):
         # Add arrow diagram
         if not globals().get("DEG"):
@@ -2361,7 +2363,10 @@ class ConstructKleinBottle(InteractiveScene):
         self.wait()
 
         # Fold into half tube
-        klein_func = self.get_kelin_bottle_func()
+        if self.klein_mode == "wikipedia":
+            klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(partial*u, v)
+        else:
+            klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(u, partial*v)
         near_smooth = bezier([0, 0.1, 0.9, 1])
         surfaces = Group(
             TexturedSurface(ParametricSurface(func), "KleinBottleTexture")
@@ -2369,7 +2374,7 @@ class ConstructKleinBottle(InteractiveScene):
                 square_func,
                 tube_func,
                 lambda u, v: torus_func(u, 0.5 * v),
-                lambda u, v: klein_func(u, 0.5 * near_smooth(v)),
+                lambda u, v: klein_func(u, near_smooth(v), partial = .5),
             ]
         )
         for surface in surfaces:
@@ -2399,9 +2404,9 @@ class ConstructKleinBottle(InteractiveScene):
         self.play(Transform(moving_surface, half_klein), run_time=4)
 
         self.clear()
-        klein_func = self.get_kelin_bottle_func(v_upper_bound = .7, partial = .5)
+        klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(partial*u, v, a=3, b=2, c = 2, p1=30, p2=90, p3=80, p4=60, p5=48)
         near_smooth = bezier([0, 0.1, 0.9, 1])
-        surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, near_smooth(v))), "KleinBottleTexture")
+        surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = 1)), "KleinBottleTexture")
         self.add(surface)
 
         # Transition to full Klein Bottle
@@ -2409,7 +2414,7 @@ class ConstructKleinBottle(InteractiveScene):
         v_upper_bound = 0.85
         self.play(
             UpdateFromAlphaFunc(moving_surface, lambda m, a: m.match_points(
-                ParametricSurface(lambda u, v: klein_func(u, interpolate(0.5, 1, a) * near_smooth(v)))
+                ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = interpolate(0.5, 1, a)))
             ).set_opacity(interpolate(0.9, 0.75, a))),
             klein_diagram.animate.set_x(-5),
             frame.animate.reorient(0, 46, 0, (-0.71, -0.11, 1.71), 10.87),
@@ -2435,7 +2440,7 @@ class ConstructKleinBottle(InteractiveScene):
 
         return VGroup(line, tips)
 
-    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85, partial = 1):
+    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85):
         if mode == "svg":
             # Test kelin func
             ref_svg = SVGMobject("KleinReference")[0]
@@ -2477,25 +2482,57 @@ class ConstructKleinBottle(InteractiveScene):
             curve_func = klein_bottle
             return curve_func
         elif mode == "wikipedia":
-            def klein_function(u, v, a=2, b=1, c=3):
+            def klein_function(
+                u, v, 
+                a=2, b=1, c=15, scaling_factor=1, 
+                p1=30, p2=90, p3=80, p4=60, p5=48,
+                transformations=None
+            ):
+                """
+                Generalized Klein bottle with parameterized constants.
+
+                Parameters:
+                    u (float): First parametric variable, scaled to [0, 1].
+                    v (float): Second parametric variable, scaled to [0, 1].
+                    a (float): Scaling factor for x and z components.
+                    b (float): Scaling factor for the y component.
+                    c (float): Normalization constant to scale overall structure.
+                    scaling_factor (float): Additional scaling applied uniformly to x, y, and z.
+                    p1, p2, p3, p4, p5 (float): Adjustable constants for fine-tuning the equations.
+                    transformations (callable, optional): Function to apply additional transformations 
+                                                        to the x, y, z coordinates.
+
+                Returns:
+                    tuple: (x, y, z) coordinates.
+                """
+                PI = np.pi
+                TAU = 2 * np.pi
                 
-                u *= TAU
+                # Scale u and v
+                u *= PI
                 v *= TAU
-                x = (
-                    -a / c * np.cos(u) * (
-                        3 * np.cos(v) - 30 * np.sin(u) + 90 * np.cos(u)**4 * np.sin(u) -
-                        60 * np.cos(u)**6 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u)
-                    )
+
+                # Parametric equations with parameterized constants
+                x = -a / c * np.cos(u) * (
+                    3 * np.cos(v) - p1 * np.sin(u) + p2 * np.cos(u)**4 * np.sin(u) -
+                    p4 * np.cos(u)**6 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u)
                 )
-                y = (
-                    -b / c * np.sin(u) * (
-                        3 * np.cos(v) - 3 * np.cos(u)**2 * np.cos(v) - 48 * np.cos(u)**4 * np.cos(v) +
-                        48 * np.cos(u)**6 * np.cos(v) - 60 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u) -
-                        5 * np.cos(u)**3 * np.cos(v) * np.sin(u) - 80 * np.cos(u)**5 * np.cos(v) * np.sin(u) +
-                        80 * np.cos(u)**7 * np.cos(v) * np.sin(u)
-                    )
+                y = -b / c * np.sin(u) * (
+                    3 * np.cos(v) - 3 * np.cos(u)**2 * np.cos(v) - p5 * np.cos(u)**4 * np.cos(v) +
+                    p5 * np.cos(u)**6 * np.cos(v) - p4 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u) -
+                    5 * np.cos(u)**3 * np.cos(v) * np.sin(u) - p3 * np.cos(u)**5 * np.cos(v) * np.sin(u) +
+                    p3 * np.cos(u)**7 * np.cos(v) * np.sin(u)
                 )
                 z = a / c * (3 + 5 * np.cos(u) * np.sin(u)) * np.sin(v)
+                
+                # Apply additional scaling
+                x *= scaling_factor
+                y *= scaling_factor
+                z *= scaling_factor
+                
+                # Apply optional transformations
+                if transformations and callable(transformations):
+                    x, y, z = transformations(x, y, z)
                 return np.array([x, y, z])
             curve_func = klein_function
             return curve_func
