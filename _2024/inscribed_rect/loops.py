@@ -2213,13 +2213,26 @@ class ShowSurfaceReflection(ShowTheSurface):
 
 
 class ConstructKleinBottle(InteractiveScene):
-    klein_mode = "wikipedia"
+    klein_mode = "svg" # "wikipedia" or "svg"
     def construct(self):
-        # Add arrow diagram
         if not globals().get("DEG"):
             DEG = DEGREES
+        def test(partial = 1, v_upper_bound = .85, radius = [1,.5,.3,1]):
+            self.clear()
+            near_smooth = bezier([0, 0.1, 0.9, 1])
+            if self.klein_mode == "wikipedia":
+                klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(partial*u, v, a=3, b=2, c = 2, p1=30, p2=90, p3=80, p4=60, p5=48)
+                near_smooth = bezier([0, 0.1, 0.9, 1])
+                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = partial)), "KleinBottleTexture")
+                self.add(surface)
+            else:
+                klein_func = self.get_kelin_bottle_func(mode = self.klein_mode, v_upper_bound = v_upper_bound, radius = radius)
+                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, partial*near_smooth(1-v))), "KleinBottleTexture")
+                self.add(surface)
+        test(partial = 1, v_upper_bound = .89, radius = [1,1,.5,.3,1])
         self.embed()
 
+        # Add arrow diagram
         square = Square()
         square.set_fill(GREY_E, 1).set_stroke(BLACK, width=0)
         square.set_height(4)
@@ -2362,21 +2375,32 @@ class ConstructKleinBottle(InteractiveScene):
         )
         self.wait()
 
+        near_smooth = bezier([0, 0.1, 0.9, 1])
+
         # Fold into half tube
         if self.klein_mode == "wikipedia":
-            klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(partial*u, v)
+            klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func(mode = self.klein_mode)(partial*u, v)
+            surfaces = Group(
+                TexturedSurface(ParametricSurface(func), "KleinBottleTexture")
+                for func in [
+                    square_func,
+                    tube_func,
+                    lambda u, v: torus_func(u, 0.5 * v),
+                    lambda u, v: klein_func(u, near_smooth(v), partial = .5)
+                ]
+            )
         else:
-            klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(u, partial*v)
-        near_smooth = bezier([0, 0.1, 0.9, 1])
-        surfaces = Group(
-            TexturedSurface(ParametricSurface(func), "KleinBottleTexture")
-            for func in [
-                square_func,
-                tube_func,
-                lambda u, v: torus_func(u, 0.5 * v),
-                lambda u, v: klein_func(u, near_smooth(v), partial = .5),
-            ]
-        )
+            klein_func = self.get_kelin_bottle_func(mode = self.klein_mode)
+            surfaces = Group(
+                TexturedSurface(ParametricSurface(func), "KleinBottleTexture")
+                for func in [
+                    square_func,
+                    tube_func,
+                    lambda u, v: torus_func(u, 0.5 * v),
+                    lambda u, v: klein_func(u, .5*near_smooth(v))
+                ]
+            )
+
         for surface in surfaces:
             surface.set_opacity(0.9)
             surface.set_shading(0.3, 0.2, 0)
@@ -2403,23 +2427,26 @@ class ConstructKleinBottle(InteractiveScene):
         self.wait()
         self.play(Transform(moving_surface, half_klein), run_time=4)
 
-        self.clear()
-        klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(partial*u, v, a=3, b=2, c = 2, p1=30, p2=90, p3=80, p4=60, p5=48)
-        near_smooth = bezier([0, 0.1, 0.9, 1])
-        surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = 1)), "KleinBottleTexture")
-        self.add(surface)
-
         # Transition to full Klein Bottle
         klein_diagram = VGroup(pre_square, pink_arrows, yellow_arrows)
-        v_upper_bound = 0.85
-        self.play(
-            UpdateFromAlphaFunc(moving_surface, lambda m, a: m.match_points(
-                ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = interpolate(0.5, 1, a)))
-            ).set_opacity(interpolate(0.9, 0.75, a))),
-            klein_diagram.animate.set_x(-5),
-            frame.animate.reorient(0, 46, 0, (-0.71, -0.11, 1.71), 10.87),
-            run_time=8
-        )
+        if self.klein_mode == "wikipedia":
+            self.play(
+                UpdateFromAlphaFunc(moving_surface, lambda m, a: m.match_points(
+                    ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = interpolate(0.5, 1, a)))
+                ).set_opacity(interpolate(0.9, 0.75, a))),
+                klein_diagram.animate.set_x(-5),
+                frame.animate.reorient(0, 46, 0, (-0.71, -0.11, 1.71), 10.87),
+                run_time=8
+            )
+        else:
+            self.play(
+                UpdateFromAlphaFunc(moving_surface, lambda m, a: m.match_points(
+                    ParametricSurface(lambda u, v: klein_func(u, interpolate(0.5, 1, a)*near_smooth(v)))
+                ).set_opacity(interpolate(0.9, 0.75, a))),
+                klein_diagram.animate.set_x(-5),
+                frame.animate.reorient(0, 46, 0, (-0.71, -0.11, 1.71), 10.87),
+                run_time=8
+            )
         self.wait()
         self.play(
             klein_diagram.animate.next_to(moving_surface, LEFT, buff=2),
@@ -2440,7 +2467,7 @@ class ConstructKleinBottle(InteractiveScene):
 
         return VGroup(line, tips)
 
-    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85):
+    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0]):
         if mode == "svg":
             # Test kelin func
             ref_svg = SVGMobject("KleinReference")[0]
@@ -2537,22 +2564,23 @@ class ConstructKleinBottle(InteractiveScene):
             curve_func = klein_function
             return curve_func
 
-        def pre_klein_func(u, v, mode = mode):
+        def pre_klein_func(u, v, mode = mode, radius = radius):
             if mode == "svg":
-                radius_func = bezier([1, 1, 0.5, 0.3, 0.3, 0.3, 1.0])
+                radius_func = bezier(radius)
                 tan_alpha_func = bezier([1, 1, 0, 0, 0, 0, 1, 1])
                 v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
-                dv = 1e-2
+                dv = 1e-3
                 c_point = curve_func(v)
                 c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
                 tangent_alpha = tan_alpha_func(v)
                 # tangent = interpolate(c_prime, UP if v < 0.5 else DOWN, tangent_alpha)
-                tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
+                tangent = c_prime
+                # tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
 
                 perp = normalize(cross(tangent, OUT))
                 radius = radius_func(v)
                 # surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
-                surface_point = c_point + radius * (math.sin(TAU * u) * OUT + math.cos(TAU * u) * perp)
+                surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
                 return surface_point
             else:
                 return curve_func(u, v)
