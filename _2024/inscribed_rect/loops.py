@@ -2217,7 +2217,7 @@ class ConstructKleinBottle(InteractiveScene):
     def construct(self):
         if not globals().get("DEG"):
             DEG = DEGREES
-        def test(partial = 1, v_upper_bound = .85, radius = [1,.5,.3,1]):
+        def bottle_function_test(partial = 1, v_upper_bound = .85, radius = [1,.5,.3,1]):
             self.clear()
             near_smooth = bezier([0, 0.1, 0.9, 1])
             if self.klein_mode == "wikipedia":
@@ -2229,7 +2229,7 @@ class ConstructKleinBottle(InteractiveScene):
                 klein_func = self.get_kelin_bottle_func(mode = self.klein_mode, v_upper_bound = v_upper_bound, radius = radius)
                 surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, partial*near_smooth(1-v))), "KleinBottleTexture")
                 self.add(surface)
-        test(partial = 1, v_upper_bound = .89, radius = [1,1,.5,.3,1])
+        bottle_function_test(partial = 1, v_upper_bound = .86, radius = [1, 1, 0.5, 0.3, 0.3, .3, 1.0])
         self.embed()
 
         # Add arrow diagram
@@ -2467,18 +2467,18 @@ class ConstructKleinBottle(InteractiveScene):
 
         return VGroup(line, tips)
 
-    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0]):
-        if mode == "svg":
+    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0], tan_alpha = [1, 1, 0, 0, 0, 0, 1, 1]):
+        if "svg" in mode:
             # Test kelin func
             ref_svg = SVGMobject("KleinReference")[0]
             ref_svg.make_smooth(approx=False)
             ref_svg.add_line_to(ref_svg.get_start())
             ref_svg.set_stroke(WHITE, 3)
             ref_svg.set_width(width)
-            ref_svg.rotate(PI)
+            if mode == "svg_":
+                ref_svg.rotate(PI)
             ref_svg.set_z(4)
             ref_svg.insert_n_curves(100)
-
             # curve_func = get_quick_loop_func(ref_svg)
             curve_func = ref_svg.quick_point_from_proportion
         elif mode == "gemini":
@@ -2564,10 +2564,25 @@ class ConstructKleinBottle(InteractiveScene):
             curve_func = klein_function
             return curve_func
 
-        def pre_klein_func(u, v, mode = mode, radius = radius):
-            if mode == "svg":
+        def pre_klein_func(u, v, mode = mode, radius = radius, tan_alpha = tan_alpha):
+            if mode == "svg_":
                 radius_func = bezier(radius)
-                tan_alpha_func = bezier([1, 1, 0, 0, 0, 0, 1, 1])
+                tan_alpha_func = bezier(tan_alpha)
+                v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
+                dv = 1e-3
+                c_point = curve_func(v)
+                c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
+                tangent_alpha = tan_alpha_func(v)
+                # tangent = interpolate(c_prime, UP if v < 0.5 else DOWN, tangent_alpha)
+                tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
+                perp = normalize(cross(tangent, OUT))
+                radius = radius_func(v)
+                # surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
+                surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
+                return surface_point
+            elif mode == "svg":
+                radius_func = bezier(radius)
+                tan_alpha_func = bezier(tan_alpha)
                 v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
                 dv = 1e-3
                 c_point = curve_func(v)
