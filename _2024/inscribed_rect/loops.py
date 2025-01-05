@@ -1,5 +1,5 @@
-#~ 2024-10-06
 #~ 2025-01-01
+#~ 2024-10-06
 
 from __future__ import annotations
 from subprocess import PIPE
@@ -2229,8 +2229,8 @@ class ConstructKleinBottle(InteractiveScene):
                 klein_func = self.get_kelin_bottle_func(mode = self.klein_mode, v_upper_bound = v_upper_bound, radius = radius)
                 surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, partial*near_smooth(1-v))), "KleinBottleTexture")
                 self.add(surface)
-        bottle_function_test(partial = 1, v_upper_bound = .86, radius = [1, 1, 0.5, 0.3, 0.3, .3, 1.0])
-        self.embed()
+        # bottle_function_test(partial = 1, v_upper_bound = .825, radius = [1, 1, 0.5, 0.3, 0.3, .3, 1.0])
+        # self.embed()
 
         # Add arrow diagram
         square = Square()
@@ -2467,7 +2467,7 @@ class ConstructKleinBottle(InteractiveScene):
 
         return VGroup(line, tips)
 
-    def get_kelin_bottle_func(self, width=4, z=4, mode = "wikipedia", v_upper_bound = 0.85, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0], tan_alpha = [1, 1, 0, 0, 0, 0, 1, 1]):
+    def get_kelin_bottle_func(self, width=4, z=4, mode = "dumbbell", v_upper_bound = 0.825, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0], tan_alpha = [1, 1, 0, 0, 0, 0, 1, 1]):
         if "svg" in mode:
             # Test kelin func
             ref_svg = SVGMobject("KleinReference")[0]
@@ -2563,6 +2563,84 @@ class ConstructKleinBottle(InteractiveScene):
                 return np.array([x, y, z])
             curve_func = klein_function
             return curve_func
+        elif mode == "academic_paper":
+            def klein_bottle(u, v, a=20, b=8, c=11/2, d=2/5):
+                """
+                Computes the x, y, z coordinates for a point on the Klein bottle
+                based on the parametrization from section 3 of the paper.
+
+                Parameters:
+                    t (float): Parameter along the directrix curve, in (0, 2π).
+                    theta (float): Angular parameter around the tube, in [0, 2π].
+                    a, b (float): Parameters controlling the directrix curve.
+                    c, d (float): Parameters controlling the tube radius.
+
+                Returns:
+                    tuple: (x, y, z) coordinates of the point on the Klein bottle.
+                """
+                u *= TAU
+                v *= TAU
+                # Directrix curve γ(t)
+                gamma_x = a * (1 - np.cos(u))
+                gamma_y = b * np.sin(u) * (1 - np.cos(u))
+
+                # Radius function r(t)
+                radius = c - d * (u - np.pi) * np.sqrt(u * (2 * np.pi - u))
+
+                # Tangent vector to γ(t)
+                gamma_dx = a * np.sin(u)
+                gamma_dy = b * (np.sin(u)**2 - np.cos(u) * (1 - np.cos(u)))
+                norm = np.sqrt(gamma_dx**2 + gamma_dy**2)
+
+                # Orthogonal vectors to γ'(t)
+                J = (-gamma_dy / norm, gamma_dx / norm)  # Rotated tangent vector
+                k = (0, 0, 1)  # z-axis unit vector
+
+                # x, y, z coordinates of the tube around γ(t)
+                x = gamma_x + radius * (np.cos(v) * J[0])
+                y = gamma_y + radius * (np.cos(v) * J[1])
+                z = radius * np.sin(v)
+
+                return np.array([x, y, z])
+            curve_func = klein_bottle
+            return curve_func
+        elif mode == "dumbbell":
+            def klein_bottle_dumbbell(u, v):
+                """
+                Computes the (x, y, z) coordinates for the Klein bottle using
+                the Dumbbell curve as the directrix.
+
+                Parameters:
+                    t (float): Parameter along the directrix curve, in [0, π].
+                    theta (float): Angular parameter around the tube, in [0, 2π].
+
+                Returns:
+                    tuple: (x, y, z) coordinates of the point on the Klein bottle.
+                """
+                u *= PI
+                v *= 2*PI
+                # Directrix curve α(t)
+                alpha_x = 5 * np.sin(u)
+                alpha_y = 2 * (np.sin(u)**2) * np.cos(u)
+
+                # Radius function r(t)
+                radius = 0.5 - (1/30) * (2 * u - np.pi) * np.sqrt(max(2 * u * (2 * np.pi - 2 * u), 0))
+
+                # Tangent vector to α(t)
+                alpha_dx = 5 * np.cos(u)
+                alpha_dy = 2 * (2 * np.sin(u) * np.cos(u) - np.sin(u)**3)
+                norm = np.sqrt(alpha_dx**2 + alpha_dy**2)
+
+                # Orthogonal vectors to α'(t)
+                J = (-alpha_dy / norm, alpha_dx / norm)  # Rotated tangent vector
+                k = (0, 0, 1)  # z-axis unit vector
+
+                # x, y, z coordinates of the tube around α(t)
+                x = alpha_x + radius * (np.cos(v) * J[0])
+                y = alpha_y + radius * (np.cos(v) * J[1])
+                z = radius * np.sin(v)
+                return np.array([x, y, z])
+            curve_func = klein_bottle_dumbbell
 
         def pre_klein_func(u, v, mode = mode, radius = radius, tan_alpha = tan_alpha):
             if mode == "svg_":
@@ -2583,14 +2661,14 @@ class ConstructKleinBottle(InteractiveScene):
             elif mode == "svg":
                 radius_func = bezier(radius)
                 tan_alpha_func = bezier(tan_alpha)
-                v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
+                # v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
+                v_alpha_func = smooth
                 dv = 1e-3
                 c_point = curve_func(v)
                 c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
                 tangent_alpha = tan_alpha_func(v)
-                # tangent = interpolate(c_prime, UP if v < 0.5 else DOWN, tangent_alpha)
-                tangent = c_prime
-                # tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
+                # tangent = c_prime
+                tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
 
                 perp = normalize(cross(tangent, OUT))
                 radius = radius_func(v)
