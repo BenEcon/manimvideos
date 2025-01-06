@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from typing import Callable
     from manimlib.typing import Vect3, Vect4
 
-# DEG = TAU / 360
+DEG = TAU / 360
 
 class LoopScene(InteractiveScene):
     def get_dot_group(
@@ -2213,17 +2213,32 @@ class ShowSurfaceReflection(ShowTheSurface):
 
 
 class ConstructKleinBottle(InteractiveScene):
-    klein_mode = "svg" # "wikipedia" or "svg"
+    klein_mode = "skamkam" # svg or svg_ or academic_paper or skamkam or wikipedia
     def construct(self):
-        if not globals().get("DEG"):
-            DEG = DEGREES
-        def bottle_function_test(partial = 1, v_upper_bound = .85, radius = [1,.5,.3,1]):
+        # if not globals().get("DEG"):
+        #     DEG = DEGREES
+        def bottle_function_test(partial = 1, v_upper_bound = .85, radius = [1,.5,.3,1], parameters = []):
             self.clear()
             near_smooth = bezier([0, 0.1, 0.9, 1])
             if self.klein_mode == "wikipedia":
                 klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(partial*u, v, a=3, b=2, c = 2, p1=30, p2=90, p3=80, p4=60, p5=48)
                 near_smooth = bezier([0, 0.1, 0.9, 1])
                 surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = partial)), "KleinBottleTexture")
+                self.add(surface)
+            elif self.klein_mode == "academic_paper":
+                klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func(mode = self.klein_mode)(partial*u, v)
+                near_smooth = bezier([0, 0.1, 0.9, 1])
+                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(near_smooth(v), u, partial = partial)), "KleinBottleTexture")
+                self.add(surface)
+            elif self.klein_mode == "skamkam":
+                # parameters = [.5, 1, .5, .3, .2, .35, .5]
+                if parameters:
+                    h_top, h_bottom, w_right, w_left, r1, r2, r3 =  parameters
+                else:
+                    h_top, h_bottom, w_right, w_left, r1, r2, r3 = [.5, 1, .5, .3, .2, .35, .5]
+                klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func(mode = self.klein_mode)(partial*u, v, h_top, h_bottom, w_right, w_left, r1, r2, r3)
+                near_smooth = bezier([0, 0.1, 0.9, 1])
+                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(near_smooth(v), u, partial = partial)), "KleinBottleTexture")
                 self.add(surface)
             else:
                 klein_func = self.get_kelin_bottle_func(mode = self.klein_mode, v_upper_bound = v_upper_bound, radius = radius)
@@ -2467,7 +2482,7 @@ class ConstructKleinBottle(InteractiveScene):
 
         return VGroup(line, tips)
 
-    def get_kelin_bottle_func(self, width=4, z=4, mode = "dumbbell", v_upper_bound = 0.825, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0], tan_alpha = [1, 1, 0, 0, 0, 0, 1, 1]):
+    def get_kelin_bottle_func(self, width=4, z=4, mode = "academic_paper", v_upper_bound = 0.825, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0], tan_alpha = [1, 1, 0, 0, 0, 0, 1, 1]):
         if "svg" in mode:
             # Test kelin func
             ref_svg = SVGMobject("KleinReference")[0]
@@ -2481,166 +2496,10 @@ class ConstructKleinBottle(InteractiveScene):
             ref_svg.insert_n_curves(100)
             # curve_func = get_quick_loop_func(ref_svg)
             curve_func = ref_svg.quick_point_from_proportion
-        elif mode == "gemini":
-            def klein_bottle(u, v):
-                u *= TAU
-                v *= TAU
-                """
-                Parametric equation for the Klein bottle.
-
-                Args:
-                    u: First parameter.
-                    v: Second parameter.
-
-                Returns:
-                    A tuple containing x, y, and z coordinates.
-                """
-                a = 6 * np.cos(u) * (1 + np.sin(u))
-                b = 16 * np.sin(u)
-                c = 5 * (1 - np.cos(u) / 2)
-
-                # Handle the twist in the bottle's construction
-                x = a + c * np.cos(v) * np.cos(u) 
-                y = b + c * np.sin(v) * np.cos(u) 
-                z = c * np.sin(v)
-                x = (a + c * np.cos(v + np.pi)) * (u > np.pi) + x*(u <= np.pi)
-                y = (b) * (u > np.pi) + y*(u <= np.pi)
-                return np.array([x, y, z])
-            curve_func = klein_bottle
+        else:
+            from _2024.inscribed_rect.klein_bottle import klein_bottle_function
+            curve_func = klein_bottle_function(mode)
             return curve_func
-        elif mode == "wikipedia":
-            def klein_function(
-                u, v, 
-                a=2, b=1, c=15, scaling_factor=1, 
-                p1=30, p2=90, p3=80, p4=60, p5=48,
-                transformations=None
-            ):
-                """
-                Generalized Klein bottle with parameterized constants.
-
-                Parameters:
-                    u (float): First parametric variable, scaled to [0, 1].
-                    v (float): Second parametric variable, scaled to [0, 1].
-                    a (float): Scaling factor for x and z components.
-                    b (float): Scaling factor for the y component.
-                    c (float): Normalization constant to scale overall structure.
-                    scaling_factor (float): Additional scaling applied uniformly to x, y, and z.
-                    p1, p2, p3, p4, p5 (float): Adjustable constants for fine-tuning the equations.
-                    transformations (callable, optional): Function to apply additional transformations 
-                                                        to the x, y, z coordinates.
-
-                Returns:
-                    tuple: (x, y, z) coordinates.
-                """
-                PI = np.pi
-                TAU = 2 * np.pi
-                
-                # Scale u and v
-                u *= PI
-                v *= TAU
-
-                # Parametric equations with parameterized constants
-                x = -a / c * np.cos(u) * (
-                    3 * np.cos(v) - p1 * np.sin(u) + p2 * np.cos(u)**4 * np.sin(u) -
-                    p4 * np.cos(u)**6 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u)
-                )
-                y = -b / c * np.sin(u) * (
-                    3 * np.cos(v) - 3 * np.cos(u)**2 * np.cos(v) - p5 * np.cos(u)**4 * np.cos(v) +
-                    p5 * np.cos(u)**6 * np.cos(v) - p4 * np.sin(u) + 5 * np.cos(u) * np.cos(v) * np.sin(u) -
-                    5 * np.cos(u)**3 * np.cos(v) * np.sin(u) - p3 * np.cos(u)**5 * np.cos(v) * np.sin(u) +
-                    p3 * np.cos(u)**7 * np.cos(v) * np.sin(u)
-                )
-                z = a / c * (3 + 5 * np.cos(u) * np.sin(u)) * np.sin(v)
-                
-                # Apply additional scaling
-                x *= scaling_factor
-                y *= scaling_factor
-                z *= scaling_factor
-                
-                # Apply optional transformations
-                if transformations and callable(transformations):
-                    x, y, z = transformations(x, y, z)
-                return np.array([x, y, z])
-            curve_func = klein_function
-            return curve_func
-        elif mode == "academic_paper":
-            def klein_bottle(u, v, a=20, b=8, c=11/2, d=2/5):
-                """
-                Computes the x, y, z coordinates for a point on the Klein bottle
-                based on the parametrization from section 3 of the paper.
-
-                Parameters:
-                    t (float): Parameter along the directrix curve, in (0, 2π).
-                    theta (float): Angular parameter around the tube, in [0, 2π].
-                    a, b (float): Parameters controlling the directrix curve.
-                    c, d (float): Parameters controlling the tube radius.
-
-                Returns:
-                    tuple: (x, y, z) coordinates of the point on the Klein bottle.
-                """
-                u *= TAU
-                v *= TAU
-                # Directrix curve γ(t)
-                gamma_x = a * (1 - np.cos(u))
-                gamma_y = b * np.sin(u) * (1 - np.cos(u))
-
-                # Radius function r(t)
-                radius = c - d * (u - np.pi) * np.sqrt(u * (2 * np.pi - u))
-
-                # Tangent vector to γ(t)
-                gamma_dx = a * np.sin(u)
-                gamma_dy = b * (np.sin(u)**2 - np.cos(u) * (1 - np.cos(u)))
-                norm = np.sqrt(gamma_dx**2 + gamma_dy**2)
-
-                # Orthogonal vectors to γ'(t)
-                J = (-gamma_dy / norm, gamma_dx / norm)  # Rotated tangent vector
-                k = (0, 0, 1)  # z-axis unit vector
-
-                # x, y, z coordinates of the tube around γ(t)
-                x = gamma_x + radius * (np.cos(v) * J[0])
-                y = gamma_y + radius * (np.cos(v) * J[1])
-                z = radius * np.sin(v)
-
-                return np.array([x, y, z])
-            curve_func = klein_bottle
-            return curve_func
-        elif mode == "dumbbell":
-            def klein_bottle_dumbbell(u, v):
-                """
-                Computes the (x, y, z) coordinates for the Klein bottle using
-                the Dumbbell curve as the directrix.
-
-                Parameters:
-                    t (float): Parameter along the directrix curve, in [0, π].
-                    theta (float): Angular parameter around the tube, in [0, 2π].
-
-                Returns:
-                    tuple: (x, y, z) coordinates of the point on the Klein bottle.
-                """
-                u *= PI
-                v *= 2*PI
-                # Directrix curve α(t)
-                alpha_x = 5 * np.sin(u)
-                alpha_y = 2 * (np.sin(u)**2) * np.cos(u)
-
-                # Radius function r(t)
-                radius = 0.5 - (1/30) * (2 * u - np.pi) * np.sqrt(max(2 * u * (2 * np.pi - 2 * u), 0))
-
-                # Tangent vector to α(t)
-                alpha_dx = 5 * np.cos(u)
-                alpha_dy = 2 * (2 * np.sin(u) * np.cos(u) - np.sin(u)**3)
-                norm = np.sqrt(alpha_dx**2 + alpha_dy**2)
-
-                # Orthogonal vectors to α'(t)
-                J = (-alpha_dy / norm, alpha_dx / norm)  # Rotated tangent vector
-                k = (0, 0, 1)  # z-axis unit vector
-
-                # x, y, z coordinates of the tube around α(t)
-                x = alpha_x + radius * (np.cos(v) * J[0])
-                y = alpha_y + radius * (np.cos(v) * J[1])
-                z = radius * np.sin(v)
-                return np.array([x, y, z])
-            curve_func = klein_bottle_dumbbell
 
         def pre_klein_func(u, v, mode = mode, radius = radius, tan_alpha = tan_alpha):
             if mode == "svg_":
