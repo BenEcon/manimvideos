@@ -1,8 +1,6 @@
 #~ 2025-01-01
-#~ 2024-10-06
 
 from __future__ import annotations
-from subprocess import PIPE
 
 from manim_imports_ext import *
 
@@ -14,7 +12,6 @@ if TYPE_CHECKING:
     from typing import Callable
     from manimlib.typing import Vect3, Vect4
 
-DEG = TAU / 360
 
 class LoopScene(InteractiveScene):
     def get_dot_group(
@@ -1303,7 +1300,7 @@ class ParameterizeTheLoop(InteractiveScene):
             surface.set_shading(0.25, 0.25, 0)
             surface.set_opacity(0.75)
 
-        target_z = 4
+        target_z = 5
         square3d, tube, half_torus, torus = surfaces
         square3d.replace(square)
 
@@ -1320,9 +1317,13 @@ class ParameterizeTheLoop(InteractiveScene):
         half_torus.match_width(torus)
         half_torus.move_to(torus, UP)
 
+        cover_rect = SurroundingRectangle(Group(loop, loop_y_group))
+        cover_rect.set_fill(BLACK, 1).set_stroke(width=0)
+
         self.add(surface)
         self.play(
             FadeIn(surface, shift=target_z * OUT),
+            FadeIn(cover_rect),
             frame.animate.reorient(-13, 61, 0, (1.52, 1.67, 1.97), 15.41),
             run_time=3,
         )
@@ -1340,9 +1341,11 @@ class ParameterizeTheLoop(InteractiveScene):
         torus_point.apply_depth_test()
 
         self.play(
-            frame.animate.reorient(0, 0, 0, (0.44, 1.84, 0.0), 13.21),
+            FadeOut(cover_rect),
             loop.animate.set_height(6).next_to(y_axis, LEFT, buff=1.5),
+            frame.animate.reorient(0, 0, 0, (0.44, 1.84, 0.0), 13.21),
             torus.animate.set_height(7).rotate(50 * DEG, LEFT).move_to(6 * UP),
+            torus.animate.set_height(7).rotate(50 * DEG, LEFT).move_to(6 * UP).match_x(square),
             v_arrows.animate.set_opacity(0.25),
             h_arrows.animate.set_opacity(0.25),
             coord_label.animate.scale(1.5),
@@ -1471,7 +1474,7 @@ class ParameterizeTheLoop(InteractiveScene):
             run_time=2
         )
         self.remove(v_arrows)
-        self.play(h_arrows.animate.set_color(TEAL))
+        self.play(h_arrows.animate.set_color(PURPLE))
 
         folded_square = Group(dr_triangle, h_arrows, fold_line).copy()
 
@@ -1601,7 +1604,10 @@ class ParameterizeTheLoop(InteractiveScene):
         square3d.set_z(target_z)
         surface = square3d.copy()
 
+        cover_rect.surround(loop, buff=0.2)
+
         self.play(
+            FadeIn(cover_rect),
             FadeIn(surface, shift=target_z * OUT),
             frame.animate.reorient(2, 51, 0, (-0.35, 3.04, 0.42), 15.36),
             run_time=3
@@ -2213,40 +2219,7 @@ class ShowSurfaceReflection(ShowTheSurface):
 
 
 class ConstructKleinBottle(InteractiveScene):
-    klein_mode = "skamkam" # svg or svg_ or academic_paper or skamkam or wikipedia
     def construct(self):
-        # if not globals().get("DEG"):
-        #     DEG = DEGREES
-        def bottle_function_test(partial = 1, v_upper_bound = .85, radius = [1,.5,.3,1], parameters = []):
-            self.clear()
-            near_smooth = bezier([0, 0.1, 0.9, 1])
-            if self.klein_mode == "wikipedia":
-                klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func()(partial*u, v, a=3, b=2, c = 2, p1=30, p2=90, p3=80, p4=60, p5=48)
-                near_smooth = bezier([0, 0.1, 0.9, 1])
-                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = partial)), "KleinBottleTexture")
-                self.add(surface)
-            elif self.klein_mode == "academic_paper":
-                klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func(mode = self.klein_mode)(partial*u, v)
-                near_smooth = bezier([0, 0.1, 0.9, 1])
-                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(near_smooth(v), u, partial = partial)), "KleinBottleTexture")
-                self.add(surface)
-            elif self.klein_mode == "skamkam":
-                # parameters = [.5, 1, .5, .3, .2, .35, .5]
-                if parameters:
-                    h_top, h_bottom, w_right, w_left, r1, r2, r3 =  parameters
-                else:
-                    h_top, h_bottom, w_right, w_left, r1, r2, r3 = [.5, 1, .5, .3, .2, .35, .5]
-                klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func(mode = self.klein_mode)(partial*u, v, h_top, h_bottom, w_right, w_left, r1, r2, r3)
-                near_smooth = bezier([0, 0.1, 0.9, 1])
-                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(near_smooth(v), u, partial = partial)), "KleinBottleTexture")
-                self.add(surface)
-            else:
-                klein_func = self.get_kelin_bottle_func(mode = self.klein_mode, v_upper_bound = v_upper_bound, radius = radius)
-                surface = TexturedSurface(ParametricSurface(lambda u, v: klein_func(u, partial*near_smooth(1-v))), "KleinBottleTexture")
-                self.add(surface)
-        # bottle_function_test(partial = 1, v_upper_bound = .825, radius = [1, 1, 0.5, 0.3, 0.3, .3, 1.0])
-        # self.embed()
-
         # Add arrow diagram
         square = Square()
         square.set_fill(GREY_E, 1).set_stroke(BLACK, width=0)
@@ -2390,32 +2363,18 @@ class ConstructKleinBottle(InteractiveScene):
         )
         self.wait()
 
-        near_smooth = bezier([0, 0.1, 0.9, 1])
-
         # Fold into half tube
-        if self.klein_mode == "wikipedia":
-            klein_func = lambda u, v, partial = 1: self.get_kelin_bottle_func(mode = self.klein_mode)(partial*u, v)
-            surfaces = Group(
-                TexturedSurface(ParametricSurface(func), "KleinBottleTexture")
-                for func in [
-                    square_func,
-                    tube_func,
-                    lambda u, v: torus_func(u, 0.5 * v),
-                    lambda u, v: klein_func(u, near_smooth(v), partial = .5)
-                ]
-            )
-        else:
-            klein_func = self.get_kelin_bottle_func(mode = self.klein_mode)
-            surfaces = Group(
-                TexturedSurface(ParametricSurface(func), "KleinBottleTexture")
-                for func in [
-                    square_func,
-                    tube_func,
-                    lambda u, v: torus_func(u, 0.5 * v),
-                    lambda u, v: klein_func(u, .5*near_smooth(v))
-                ]
-            )
-
+        klein_func = self.get_kelin_bottle_func()
+        near_smooth = bezier([0, 0.1, 0.9, 1])
+        surfaces = Group(
+            TexturedSurface(ParametricSurface(func), "KleinBottleTexture")
+            for func in [
+                square_func,
+                tube_func,
+                lambda u, v: torus_func(u, 0.5 * v),
+                lambda u, v: klein_func(u, 0.5 * near_smooth(v)),
+            ]
+        )
         for surface in surfaces:
             surface.set_opacity(0.9)
             surface.set_shading(0.3, 0.2, 0)
@@ -2444,24 +2403,15 @@ class ConstructKleinBottle(InteractiveScene):
 
         # Transition to full Klein Bottle
         klein_diagram = VGroup(pre_square, pink_arrows, yellow_arrows)
-        if self.klein_mode == "wikipedia":
-            self.play(
-                UpdateFromAlphaFunc(moving_surface, lambda m, a: m.match_points(
-                    ParametricSurface(lambda u, v: klein_func(u, near_smooth(v), partial = interpolate(0.5, 1, a)))
-                ).set_opacity(interpolate(0.9, 0.75, a))),
-                klein_diagram.animate.set_x(-5),
-                frame.animate.reorient(0, 46, 0, (-0.71, -0.11, 1.71), 10.87),
-                run_time=8
-            )
-        else:
-            self.play(
-                UpdateFromAlphaFunc(moving_surface, lambda m, a: m.match_points(
-                    ParametricSurface(lambda u, v: klein_func(u, interpolate(0.5, 1, a)*near_smooth(v)))
-                ).set_opacity(interpolate(0.9, 0.75, a))),
-                klein_diagram.animate.set_x(-5),
-                frame.animate.reorient(0, 46, 0, (-0.71, -0.11, 1.71), 10.87),
-                run_time=8
-            )
+        v_upper_bound = 0.85
+        self.play(
+            UpdateFromAlphaFunc(moving_surface, lambda m, a: m.match_points(
+                ParametricSurface(lambda u, v: klein_func(u, interpolate(0.5, 1, a) * near_smooth(v)))
+            ).set_opacity(interpolate(0.9, 0.75, a))),
+            klein_diagram.animate.set_x(-5),
+            frame.animate.reorient(0, 46, 0, (-0.71, -0.11, 1.71), 10.87),
+            run_time=8
+        )
         self.wait()
         self.play(
             klein_diagram.animate.next_to(moving_surface, LEFT, buff=2),
@@ -2482,60 +2432,37 @@ class ConstructKleinBottle(InteractiveScene):
 
         return VGroup(line, tips)
 
-    def get_kelin_bottle_func(self, width=4, z=4, mode = "academic_paper", v_upper_bound = 0.825, radius = [1, 1, 0.5, 0.3, 0.3, 0.3, 1.0], tan_alpha = [1, 1, 0, 0, 0, 0, 1, 1]):
-        if "svg" in mode:
-            # Test kelin func
-            ref_svg = SVGMobject("KleinReference")[0]
-            ref_svg.make_smooth(approx=False)
-            ref_svg.add_line_to(ref_svg.get_start())
-            ref_svg.set_stroke(WHITE, 3)
-            ref_svg.set_width(width)
-            if mode == "svg_":
-                ref_svg.rotate(PI)
-            ref_svg.set_z(4)
-            ref_svg.insert_n_curves(100)
-            # curve_func = get_quick_loop_func(ref_svg)
-            curve_func = ref_svg.quick_point_from_proportion
-        else:
-            from _2024.inscribed_rect.klein_bottle import klein_bottle_function
-            curve_func = klein_bottle_function(mode)
-            return curve_func
+    def get_kelin_bottle_func(self, width=4, z=4):
+        # Test kelin func
+        ref_svg = SVGMobject("KleinReference")[0]
+        ref_svg.make_smooth(approx=False)
+        ref_svg.add_line_to(ref_svg.get_start())
+        ref_svg.set_stroke(WHITE, 3)
+        ref_svg.set_width(width)
+        ref_svg.rotate(PI)
+        ref_svg.set_z(4)
+        ref_svg.insert_n_curves(100)
 
-        def pre_klein_func(u, v, mode = mode, radius = radius, tan_alpha = tan_alpha):
-            if mode == "svg_":
-                radius_func = bezier(radius)
-                tan_alpha_func = bezier(tan_alpha)
-                v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
-                dv = 1e-3
-                c_point = curve_func(v)
-                c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
-                tangent_alpha = tan_alpha_func(v)
-                # tangent = interpolate(c_prime, UP if v < 0.5 else DOWN, tangent_alpha)
-                tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
-                perp = normalize(cross(tangent, OUT))
-                radius = radius_func(v)
-                # surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
-                surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
-                return surface_point
-            elif mode == "svg":
-                radius_func = bezier(radius)
-                tan_alpha_func = bezier(tan_alpha)
-                # v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
-                v_alpha_func = smooth
-                dv = 1e-3
-                c_point = curve_func(v)
-                c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
-                tangent_alpha = tan_alpha_func(v)
-                # tangent = c_prime
-                tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
+        # curve_func = get_quick_loop_func(ref_svg)
+        curve_func = ref_svg.quick_point_from_proportion
+        radius_func = bezier([1, 1, 0.5, 0.3, 0.3, 0.3, 1.0])
+        tan_alpha_func = bezier([1, 1, 0, 0, 0, 0, 1, 1])
+        v_alpha_func = squish_rate_func(smooth, 0.25, 0.75)
 
-                perp = normalize(cross(tangent, OUT))
-                radius = radius_func(v)
-                # surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
-                surface_point = c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
-                return surface_point
-            else:
-                return curve_func(u, v)
+        def pre_klein_func(u, v):
+            dv = 1e-2
+            c_point = curve_func(v)
+            c_prime = normalize((curve_func(v + dv) - curve_func(v - dv)) / (2 * dv))
+            tangent_alpha = tan_alpha_func(v)
+            # tangent = interpolate(c_prime, UP if v < 0.5 else DOWN, tangent_alpha)
+            tangent = interpolate(c_prime, interpolate(UP, DOWN, v_alpha_func(v)), tangent_alpha)
+
+            perp = normalize(cross(tangent, OUT))
+            radius = radius_func(v)
+
+            return c_point + radius * (math.cos(TAU * u) * OUT - math.sin(TAU * u) * perp)
+
+        v_upper_bound = 0.85
 
         def true_kelin_func(u, v):
             if v <= v_upper_bound:
@@ -3105,3 +3032,125 @@ class MobiusStripsAndKleinBottlesIn4D(ConstructKleinBottle):
                 Write(mesh, stroke_width=0.5, run_time=2),
                 GrowArrow(arrow),
             )
+
+
+class MusicalIntervalsAsPairs(InteractiveScene):
+    def construct(self):
+        # Add piano
+        piano = Piano()[:39]
+        piano.center()
+        piano.set_width(FRAME_WIDTH)
+        piano.set_shading(0.2, 0.1, 0)
+
+        keys = piano[15:27]
+        key_labels = VGroup(map(Tex, [
+            R"C",
+            R"C^{\#}",
+            R"D",
+            R"D^{\#}",
+            R"E",
+            R"F",
+            R"F^{\#}",
+            R"G",
+            R"G^{\#}",
+            R"A",
+            R"A^{\#}",
+            R"B",
+        ]))
+        key_labels.scale(0.6)
+        key_labels.set_stroke(WHITE, 1)
+        for key, label in zip(keys, key_labels):
+            label.next_to(key.get_bottom(), UP, buff=0.1)
+
+        self.add(piano)
+
+        # Highlight random key pairs
+        random.seed(0)
+        indices = list(range(12))
+        keys.save_state()
+        for _ in range(24):
+            i, j = random.sample(indices, 2)
+            keys[i].set_color(TEAL)
+            keys[j].set_color(TEAL)
+            self.add(key_labels[i])
+            self.add(key_labels[j])
+            self.wait(0.5)
+            # self.play_notes(i, j, 0.5)  # Only used for screen recording
+            self.remove(key_labels)
+            keys.restore()
+
+        # Show the circle
+        circle = Circle(radius=3)
+        circle.set_stroke(WHITE, 3)
+        circle.flip(axis=UR)
+
+        key_labels.target = key_labels.generate_target()
+        dots = Group()
+        for label, alpha in zip(key_labels.target, np.arange(0, 1, 1 / 12)):
+            point = circle.pfp(alpha)
+            label.move_to(1.1 * point)
+            dots.add(GlowDot(point, color=TEAL, radius=0.3))
+
+        self.play(
+            FadeOut(piano[:15]),
+            keys.animate.set_opacity(0.5),
+            FadeOut(piano[27:]),
+            VFadeIn(key_labels),
+        )
+        self.remove(key_labels)
+        self.play(
+            ShowCreation(circle),
+            LaggedStart(
+                (FadeTransform(Group(key), dot)
+                for key, dot in zip(keys, dots)),
+                lag_ratio=0.1,
+                group_type=Group,
+            ),
+            MoveToTarget(key_labels, lag_ratio=0.01),
+            run_time=2
+        )
+
+        # Show the random connections again
+        random.seed(0)
+        line = Line().set_stroke(TEAL, 3)
+        self.add(line)
+
+        for _ in range(24):
+            i, j = random.sample(indices, 2)
+            line.put_start_and_end_on(
+                dots[i].get_center(),
+                dots[j].get_center(),
+            )
+            self.wait(1 / 3)
+
+    def play_notes(self, i, j, duration=0.5, sample_rate=44100):
+        """
+        Play two notes simultaneously, specified as half steps above middle C.
+
+        Parameters:
+        i (int): Half steps above middle C for first note
+        j (int): Half steps above middle C for second note
+        duration (float): Length of time to play in seconds
+        sample_rate (int): Number of samples per second
+        """
+        import sounddevice as sd
+        # Middle C is 261.63 Hz
+        base_freq = 261.63
+
+        # Calculate frequencies using equal temperament formula
+        freq1 = base_freq * (2 ** (i / 12))
+        freq2 = base_freq * (2 ** (j / 12))
+
+        # Generate time array
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
+
+        # Generate sine waves for each note
+        note1 = np.sin(2 * np.pi * freq1 * t)
+        note2 = np.sin(2 * np.pi * freq2 * t)
+
+        # Combine notes and normalize
+        combined = (note1 + note2) / 2
+
+        # Play the sound
+        sd.play(combined, sample_rate)
+        sd.wait()  # Wait until the sound has finished playing
