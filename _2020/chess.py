@@ -1,3 +1,5 @@
+#~ 0.2.0
+
 from manim_imports_ext import *
 
 

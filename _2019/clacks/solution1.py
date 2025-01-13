@@ -1,3 +1,5 @@
+#~ manim-cairo-backend
+
 from manim_imports_ext import *
 from _2019.clacks.question import *
 from _2018.div_curl import ShowTwoPopulations
@@ -1193,7 +1195,7 @@ class CircleDiagramFromSlidingBlocks(Scene):
         },
         "axes_config": {
             "style": {
-                "stroke_color": GREY_B,
+                "stroke_color": GREY_BROWN,
                 "stroke_width": 1,
             },
             "width": 5,
