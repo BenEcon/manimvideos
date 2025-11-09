@@ -1,6 +1,6 @@
 from manim_imports_ext import *
 
-DEG = DEGREES
+
 EARTH_TILT_ANGLE = 23.3 * DEG
 
 # All in Kilometers
