@@ -1,7 +1,7 @@
 from manim_imports_ext import *
 
 
-ASSET_DIR = "/Users/grant/3Blue1Brown Dropbox/3Blue1Brown/videos/2022/galois/assets/"
+ASSET_DIR = "/Users/bowen/Documents/Python/Manim/Files/images/raster"
 
 
 class FlowerSymmetries(InteractiveScene):
