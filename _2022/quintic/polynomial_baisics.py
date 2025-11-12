@@ -1,3 +1,5 @@
+#~2022-06-20
+
 from manim_imports_ext import *
 from _2022.quintic.roots_and_coefs import *
 
@@ -1368,6 +1370,15 @@ class StudySqrt(RadicalScene):
         ts_group.arrange(DOWN, buff=MED_LARGE_BUFF)
         ts_group.to_edge(UP, buff=MED_SMALL_BUFF)
 
+        def gen_choose(n, r):
+            # generalized binomial coefficient (works for non-integer n)
+            if r == 0:
+                return 1
+            prod = 1
+            for k in range(r):
+                prod *= (n - k)
+            return prod / math.factorial(r)
+
         def f(x, n):
             return sum((
                 gen_choose(1 / 2, k) * (x - 1)**k
@@ -1408,7 +1419,8 @@ class StudySqrt(RadicalScene):
             new_label = OldTex("f_{50}(x)")
             new_label.replace(label, 1)
             new_label.match_style(label)
-            anims.append(Transform(label, new_label, suspend_updating=False))
+            # anims.append(Transform(label, new_label, suspend_updating=False))
+            anims.append(TransformFromCopy(label, new_label))
         self.play(*anims)
         f_dot.clear_updaters()
         f_dot.add_updater(lambda d: d.move_to(self.root_plane.n2p(f(self.get_c(), 50))))
@@ -1509,7 +1521,7 @@ class StudySqrt(RadicalScene):
         decimal = DecimalNumber()
         decimal.replace(result[2], dim_to_match=1)
         result.replace_submobject(2, decimal)
-        result.add_updater(lambda m: m.note_changed_family())
+        # result.add_updater(lambda m: m.note_changed_family())
         result.add_updater(lambda m: m[-1].set_color(color))
         result.add_updater(lambda m: m[-1].set_value(get_theta() / TAU))
         return result

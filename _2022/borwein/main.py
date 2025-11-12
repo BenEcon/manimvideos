@@ -884,8 +884,8 @@ class MovingAverages(InteractiveScene):
     def show_moving_average(self, top_axes, low_axes, low_graph, k):
         rs = self.rect_scalar
         window = Rectangle(
-            width=top_axes.x_axis.unit_size / k,
-            height=top_axes.y_axis.unit_size * 1.5,
+            width=top_axes.x_axis.get_unit_size() / k,
+            height=top_axes.y_axis.get_unit_size() * 1.5,
         )
         window.set_stroke(width=0)
         window.set_fill(self.window_color, self.window_opacity)
