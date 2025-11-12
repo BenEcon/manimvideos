@@ -169,10 +169,11 @@ class SnellsLaw(InteractiveScene):
             self.play(angle_tracker.animate.set_value(angle), run_time=5)
 
         # Tank analogy
-        tank = SVGMobject("tank")
-        tank.set_fill(WHITE)
-        tank.rotate(-16 * DEGREES)
-        tank.set_height(1)
+        tank = SVGMobject("car_racing")
+        tank.set_fill(TEAL)
+        tank.flip()
+        tank.rotate(-46 * DEGREES)
+        tank.set_height(.5)
         tank.move_to(beam.pfp(0.25))
 
         self.play(FadeOut(angle_labels))
