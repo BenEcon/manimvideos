@@ -1,5 +1,3 @@
-#~2022-06-20
-
 from manim_imports_ext import *
 from _2022.quintic.roots_and_coefs import *
 
@@ -548,7 +546,8 @@ class ConstructPolynomialWithGivenRoots(Scene):
 
         graph.clear_updaters()
         root_dots.clear_updaters()
-        axes.generate_target(use_deepcopy=True)
+        # axes.generate_target(use_deepcopy=True)
+        axes.generate_target()
         axes.target.y_axis.set_opacity(0)
         axes.target.x_axis.numbers.set_opacity(1)
         self.play(
@@ -634,7 +633,7 @@ class ConstructPolynomialWithGivenRoots(Scene):
         axes = Axes(
             x_range, y_range,
             axis_config=dict(include_tip=False, numbers_to_exclude=[]),
-            widith=abs(op.sub(*x_range)),
+            width=abs(op.sub(*x_range)),
             height=abs(op.sub(*y_range)),
         )
         axes.set_height(FRAME_HEIGHT - 1)

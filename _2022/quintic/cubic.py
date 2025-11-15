@@ -84,8 +84,8 @@ class CubicFormula(RootCoefScene):
                 "\\delta_1": GREEN,
                 "\\delta_2": GREEN,
             },
-            background_stroke_width=3,
-            background_stroke_color=3,
+            # background_stroke_width=3,
+            # background_stroke_color=3,
         )
 
         sqrt_label = OldTex(
